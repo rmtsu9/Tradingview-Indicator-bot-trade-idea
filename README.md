@@ -1,14 +1,14 @@
 # Tradingview-Indicator-bot-trade-idea-
-[b]📊 วิธีใช้กลยุทธ์ EMA+RSI+MACD+Pattern/Price Action+Bollinger Bands+Stochastic[/b]
+# 📊 วิธีใช้กลยุทธ์ EMA+RSI+MACD+Pattern/Price Action+Bollinger Bands+Stochastic
 By 1.Supachai Sornprasert [url=https://linktr.ee/bosssupachai]
      2.Tawantong Wongrinyong [url=https://www.facebook.com/RISMZUN]
 
-[b]✅ หลักการแกนกลาง[/b]
+# ✅ หลักการแกนกลาง
 ใช้ EMA50 และ EMA200 ใน Timeframe 15 นาที (TF15M)
 EMA50 ตัด EMA200 ขึ้น → สัญญาณซื้อ
 EMA50 ตัด EMA200 ลง → สัญญาณขาย
 
-[b]🧰 ขั้นตอนแบบละเอียด[/b]
+# 🧰 ขั้นตอนแบบละเอียด
 1️⃣ ใช้ Filter เทรนด์ใหญ่ (TF1H หรือ TF4H)
 เพิ่ม EMA200 ใน TF1H หรือ TF4H (เลือกใช้ 1 TF หรือใช้ทั้งคู่ก็ได้)
 ถ้าราคาใน TF1H อยู่เหนือ EMA200 → เทรดเฉพาะฝั่งซื้อ (รอ EMA50>EMA200 ใน TF15M)
@@ -45,19 +45,19 @@ Break high ล่าสุด
 TF1H หรือ TF4H สำหรับดูเทรนด์ใหญ่
 RSI, MACD, Stochastic ใช้ใน TF15M (หรือจะเปิดคู่ TF ก็ได้)
 
-[b]✅ ข้อควรระวัง[/b]
+# ✅ ข้อควรระวัง
 อย่าเข้าเทรดถ้า:
 ราคาอยู่ใน sideway แคบมาก (range เล็ก)
 เกิดสัญญาณตัดแต่ RSI/MACD/Stochastic ไม่ confirm
 เน้นรอ “confirmation” หลายตัวก่อนเข้าเทรดจริง
 
-[b]📊 How to Use the Strategy: EMA + RSI + MACD + Pattern/Price Action + Bollinger Bands + Stochastic[/b]
-[b]✅ Core Principle[/b]
+# 📊 How to Use the Strategy: EMA + RSI + MACD + Pattern/Price Action + Bollinger Bands + Stochastic
+# ✅ Core Principle
 Use EMA50 and EMA200 on the 15-minute timeframe (TF15M).
 EMA50 crossing above EMA200 → Buy signal
 EMA50 crossing below EMA200 → Sell signal
 
-[b]🧰 Step-by-Step Details[/b]
+# 🧰 Step-by-Step Details
 1️⃣ Use Higher Timeframe Trend Filter (TF1H or TF4H)
 Add EMA200 on the 1-hour (TF1H) or 4-hour (TF4H) timeframe (you can use either one or both).
 If the price on TF1H is above EMA200 → only look for buy setups (wait for EMA50>EMA200 cross on TF15M).
@@ -94,7 +94,7 @@ Use the EMA50/EMA200 cross signals on TF15M.
 Use TF1H or TF4H to identify the main trend.
 RSI, MACD, and Stochastic are used on TF15M (or you can monitor on multiple TFs).
 
-[b]✅ Important Precautions[/b]
+# ✅ Important Precautions
 Avoid trading if:
 The price is in a very narrow sideways range.
 The EMA cross happens but RSI / MACD / Stochastic do not confirm.
