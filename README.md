@@ -1,7 +1,7 @@
 # Tradingview-Indicator-bot-trade-idea-
 # 📊 วิธีใช้กลยุทธ์ EMA+RSI+MACD+Pattern/Price Action+Bollinger Bands+Stochastic
-By 1.Supachai Sornprasert [url=https://linktr.ee/bosssupachai]
-     2.Tawantong Wongrinyong [url=https://www.facebook.com/RISMZUN]
+By 1.Supachai Sornprasert [https://linktr.ee/bosssupachai]
+     2.Tawantong Wongrinyong [https://www.facebook.com/RISMZUN]
 
 # ✅ หลักการแกนกลาง
 ใช้ EMA50 และ EMA200 ใน Timeframe 15 นาที (TF15M)
