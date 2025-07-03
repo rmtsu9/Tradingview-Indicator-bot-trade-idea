@@ -1,0 +1,261 @@
+// TradingView Pine Script
+//@version=5
+indicator("💹 Multi-Indicator Trading System", shorttitle="Multi-Indicator System", overlay=true)
+
+// Input parameters
+ema50_length = input.int(50, title="EMA 50 Length", minval=1)
+ema200_length = input.int(200, title="EMA 200 Length", minval=1)
+show_signals = input.bool(true, title="Show Buy/Sell Signals")
+show_ema_lines = input.bool(true, title="Show EMA Lines")
+rr_ratio = input.float(2.0, title="Reward/Risk Ratio", minval=0.5, maxval=10.0, step=0.5)
+show_tp_sl = input.bool(true, title="Show TP/SL Lines")
+tf_short = input.timeframe("15", title="Short Timeframe (e.g., 15 for 15M)")
+tf_higher1 = input.timeframe("60", title="Higher Timeframe 1 (e.g., 60 for 1H)")
+tf_higher2 = input.timeframe("240", title="Higher Timeframe 2 (e.g., 240 for 4H)")
+lookback_bars = input.int(50, title="Lookback Bars for SL", minval=1)
+rsi_period = input.int(14, title="RSI Period", minval=1)
+use_tf_higher1 = input.bool(true, title="Use TF1H for Trend Filter")
+use_tf_higher2 = input.bool(false, title="Use TF4H for Trend Filter")
+use_rsi_conf = input.bool(true, title="Use RSI Confirmation")
+use_macd_conf = input.bool(true, title="Use MACD Confirmation")
+use_pattern_conf = input.bool(true, title="Use Pattern/Price Action Confirmation")
+sideway_threshold = input.float(0.5, title="Sideway Threshold %", minval=0.1, maxval=5.0, step=0.1)
+bb_length = input.int(20, title="Bollinger Bands Length", minval=1)
+use_bb_conf = input.bool(true, title="Use BB Confirmation")
+use_stoch_conf = input.bool(true, title="Use Stochastic Confirmation")
+stoch_k = input.int(14, title="Stochastic %K", minval=1)
+stoch_d = input.int(3, title="Stochastic %D", minval=1)
+stoch_smooth = input.int(3, title="Stochastic Smooth", minval=1)
+
+// Calculate EMAs for short timeframe
+[ema50_short, ema200_short] = request.security(syminfo.tickerid, tf_short, [ta.ema(close, ema50_length), ta.ema(close, ema200_length)])
+
+// Calculate EMA200 for higher timeframes
+ema200_1h = request.security(syminfo.tickerid, tf_higher1, ta.ema(close, ema200_length))
+ema200_4h = request.security(syminfo.tickerid, tf_higher2, ta.ema(close, ema200_length))
+
+// MACD on short TF
+[macdLine, signalLine, histLine] = request.security(syminfo.tickerid, tf_short, ta.macd(close, 12, 26, 9))
+
+// RSI on short TF
+rsi_short = request.security(syminfo.tickerid, tf_short, ta.rsi(close, rsi_period))
+
+// Bollinger Bands on short TF
+[bb_middle, bb_upper, bb_lower] = request.security(syminfo.tickerid, tf_short, [ta.sma(close, bb_length), ta.sma(close, bb_length) + ta.stdev(close, bb_length) * 2, ta.sma(close, bb_length) - ta.stdev(close, bb_length) * 2])
+
+// Stochastic on short TF
+[k] = request.security(syminfo.tickerid, tf_short, [ta.stoch(high, low, close, stoch_k)])
+d = request.security(syminfo.tickerid, tf_short, ta.sma(k, stoch_smooth))
+
+// Plot EMA lines for short timeframe
+plot(show_ema_lines ? ema50_short : na, color=color.new(color.blue, 20), linewidth=2, title="EMA 50")
+plot(show_ema_lines ? ema200_short : na, color=color.new(color.red, 20), linewidth=2, title="EMA 200")
+
+// Define higher TF trend conditions
+bullish_trend_1h = close > ema200_1h
+bearish_trend_1h = close < ema200_1h
+bullish_trend_4h = close > ema200_4h
+bearish_trend_4h = close < ema200_4h
+
+// Use higher TF trend filter
+use_higher_trend = (use_tf_higher1 and bullish_trend_1h) or (use_tf_higher2 and bullish_trend_4h)
+use_lower_trend = (use_tf_higher1 and bearish_trend_1h) or (use_tf_higher2 and bearish_trend_4h)
+
+// Detect sideway market
+ema_diff = math.abs(ema50_short - ema200_short) / ema200_short * 100
+is_sideway = ema_diff < sideway_threshold
+var bool breakout_zone = false
+if is_sideway[1] and not is_sideway
+    breakout_zone := true
+else
+    breakout_zone := false
+
+// Define entry signals on short TF
+bullish_cross_base = ta.crossover(ema50_short, ema200_short)
+bearish_cross_base = ta.crossunder(ema50_short, ema200_short)
+
+// Pattern/Price Action Confirmation
+bullish_engulfing = close > open and close[1] < open[1] and close > open[1] and close[1] < open and volume > ta.sma(volume, 20)
+hammer = low == ta.lowest(low, 5) and (close - low) / (high - low) > 0.6 and open > low and close > open
+break_high = high > ta.highest(high, 5)
+pattern_conf_buy = not use_pattern_conf or (bullish_engulfing or hammer or break_high or breakout_zone)
+
+bearish_engulfing = close < open and close[1] > open[1] and close < open[1] and close[1] > open and volume > ta.sma(volume, 20)
+pattern_conf_sell = not use_pattern_conf or (bearish_engulfing or break_high or breakout_zone)
+
+// Combo Techniques for Confirmation
+bb_conf_buy = not use_bb_conf or (bullish_cross_base and (close > bb_upper or close < bb_lower))
+bb_conf_sell = not use_bb_conf or (bearish_cross_base and (close > bb_upper or close < bb_lower))
+stoch_conf_buy = not use_stoch_conf or (bullish_cross_base and k > 20)
+stoch_conf_sell = not use_stoch_conf or (bearish_cross_base and k < 80)
+breakout_conf_buy = not use_pattern_conf or (bullish_cross_base and break_high)
+breakout_conf_sell = not use_pattern_conf or (bearish_cross_base and break_high)
+
+// Momentum confirmation
+rsi_conf_buy = not use_rsi_conf or (bullish_cross_base and rsi_short > 50)
+rsi_conf_sell = not use_rsi_conf or (bearish_cross_base and rsi_short < 50)
+macd_conf_buy = not use_macd_conf or (bullish_cross_base and macdLine > 0)
+macd_conf_sell = not use_macd_conf or (bearish_cross_base and macdLine < 0)
+
+// Final entry conditions
+bullish_cross_final = bullish_cross_base and use_higher_trend and rsi_conf_buy and macd_conf_buy and pattern_conf_buy and (bb_conf_buy or stoch_conf_buy or breakout_conf_buy)
+bearish_cross_final = bearish_cross_base and use_lower_trend and rsi_conf_sell and macd_conf_sell and pattern_conf_sell and (bb_conf_sell or stoch_conf_sell or breakout_conf_sell)
+
+// Track previous signals to prevent duplicate orders
+var bool last_bullish_cross = false
+var bool last_bearish_cross = false
+
+// Final entry with duplicate prevention
+bullish_cross = bullish_cross_final and not last_bullish_cross
+bearish_cross = bearish_cross_final and not last_bearish_cross
+
+// Update last signal status
+if bullish_cross
+    last_bullish_cross := true
+    last_bearish_cross := false
+else if bearish_cross
+    last_bullish_cross := false
+    last_bearish_cross := true
+else
+    last_bullish_cross := false
+    last_bearish_cross := false
+
+// Calculate SMA(1), which is just close
+sma1 = request.security(syminfo.tickerid, tf_short, close)
+
+// Calculate wick-based SL
+max_sma1 = request.security(syminfo.tickerid, tf_short, ta.highest(sma1, lookback_bars))
+min_sma1 = request.security(syminfo.tickerid, tf_short, ta.lowest(sma1, lookback_bars))
+
+// Variables for position management
+var float entry_price = na
+var float stop_loss = na
+var float take_profit = na
+var string current_position = "NONE"
+var int total_trades = 0
+var int winning_trades = 0
+var float win_rate = 0.0
+
+// Position management
+if current_position == "LONG"
+    if close >= take_profit
+        winning_trades := winning_trades + 1
+        current_position := "NONE"
+    else if close <= stop_loss
+        current_position := "NONE"
+    else if bearish_cross
+        if close > entry_price
+            winning_trades := winning_trades + 1
+        current_position := "NONE"
+
+if current_position == "SHORT"
+    if close <= take_profit
+        winning_trades := winning_trades + 1
+        current_position := "NONE"
+    else if close >= stop_loss
+        current_position := "NONE"
+    else if bullish_cross
+        if close < entry_price
+            winning_trades := winning_trades + 1
+        current_position := "NONE"
+
+// Enter new positions
+if current_position == "NONE"
+    if bullish_cross
+        entry_price := close
+        stop_loss := min_sma1
+        take_profit := entry_price + (entry_price - stop_loss) * rr_ratio
+        current_position := "LONG"
+        total_trades := total_trades + 1
+    else if bearish_cross
+        entry_price := close
+        stop_loss := max_sma1
+        take_profit := entry_price - (stop_loss - entry_price) * rr_ratio
+        current_position := "SHORT"
+        total_trades := total_trades + 1
+
+// Calculate win rate
+win_rate := total_trades > 0 ? (winning_trades / total_trades) * 100 : 0
+
+// Plot signals
+plotshape(show_signals and bullish_cross, title="Buy Signal", location=location.belowbar, style=shape.triangleup, size=size.normal, color=color.new(color.lime, 0), text="🔼 BUY")
+plotshape(show_signals and bearish_cross, title="Sell Signal", location=location.abovebar, style=shape.triangledown, size=size.normal, color=color.new(color.red, 0), text="🔽 SELL")
+
+// Plot TP/SL lines
+plot(show_tp_sl and not na(entry_price) and current_position != "NONE" ? entry_price : na, title="Entry Price", color=color.new(color.yellow, 0), linewidth=1, style=plot.style_circles)
+plot(show_tp_sl and not na(stop_loss) and current_position != "NONE" ? stop_loss : na, title="Stop Loss", color=color.new(color.red, 30), linewidth=1, style=plot.style_circles)
+plot(show_tp_sl and not na(take_profit) and current_position != "NONE" ? take_profit : na, title="Take Profit", color=color.new(color.lime, 30), linewidth=1, style=plot.style_circles)
+
+// Alerts
+alertcondition(bullish_cross, title="Bullish Signal", message="🚀 Bullish Signal Detected!")
+alertcondition(bearish_cross, title="Bearish Signal", message="📉 Bearish Signal Detected!")
+
+// Plot pattern and combo confirmations
+plotshape(bullish_engulfing, title="Bullish Engulfing", location=location.belowbar, style=shape.circle, size=size.tiny, color=color.new(color.lime, 0))
+plotshape(hammer, title="Hammer", location=location.belowbar, style=shape.triangleup, size=size.tiny, color=color.new(color.lime, 0))
+plotshape(break_high, title="Break High", location=location.abovebar, style=shape.triangleup, size=size.tiny, color=color.new(color.lime, 0))
+plotshape(breakout_zone, title="Breakout Zone", location=location.abovebar, style=shape.diamond, size=size.tiny, color=color.new(color.yellow, 0))
+plotshape(close > bb_upper or close < bb_lower, title="BB Edge", location=location.abovebar, style=shape.cross, size=size.tiny, color=color.new(color.yellow, 0))
+plotshape(k > 20 and bullish_cross_base, title="Stochastic Buy", location=location.belowbar, style=shape.diamond, size=size.tiny, color=color.new(color.lime, 0))
+plotshape(k < 80 and bearish_cross_base, title="Stochastic Sell", location=location.abovebar, style=shape.diamond, size=size.tiny, color=color.new(color.red, 0))
+
+// Table for dashboard
+if barstate.islast
+    var table info_table = table.new(position.top_right, 2, 19, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.new(color.gray, 50), frame_width=1, frame_color=color.new(color.white, 0))
+    
+    table.cell(info_table, 0, 0, "📊 TRADING DASHBOARD", text_color=color.new(color.white, 0), bgcolor=color.new(color.blue, 20), text_size=size.normal)
+    table.cell(info_table, 1, 0, "", bgcolor=color.new(color.blue, 20))
+    
+    table.cell(info_table, 0, 1, "Current Trend:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 1, ema50_short > ema200_short ? "🟢 BULLISH" : "🔴 BEARISH", text_color=color.new(color.white, 0), bgcolor=ema50_short > ema200_short ? color.new(color.lime, 20) : color.new(color.red, 20), text_size=size.small)
+    
+    table.cell(info_table, 0, 2, tf_higher1 + " Trend:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 2, bullish_trend_1h ? "🟢 BULLISH" : "🔴 BEARISH", text_color=color.new(color.white, 0), bgcolor=bullish_trend_1h ? color.new(color.lime, 20) : color.new(color.red, 20), text_size=size.small)
+    
+    table.cell(info_table, 0, 3, tf_higher2 + " Trend:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 3, bullish_trend_4h ? "🟢 BULLISH" : "🔴 BEARISH", text_color=color.new(color.white, 0), bgcolor=bullish_trend_4h ? color.new(color.lime, 20) : color.new(color.red, 20), text_size=size.small)
+    
+    table.cell(info_table, 0, 4, "EMA 50:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 4, str.tostring(ema50_short, "#.##"), text_color=color.new(color.blue, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 5, "EMA 200:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 5, str.tostring(ema200_short, "#.##"), text_color=color.new(color.red, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 6, "RR Ratio:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 6, str.tostring(rr_ratio, "#.##"), text_color=color.new(color.yellow, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 7, "Lookback Bars:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 7, str.tostring(lookback_bars), text_color=color.new(color.yellow, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 8, "Win Rate:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 8, str.tostring(win_rate, "#.##") + "% (" + str.tostring(winning_trades) + "/" + str.tostring(total_trades) + ")", text_color=color.new(color.white, 0), bgcolor=win_rate >= 60 ? color.new(color.lime, 20) : win_rate >= 40 ? color.new(color.orange, 20) : color.new(color.red, 20), text_size=size.small)
+    
+    table.cell(info_table, 0, 9, "Position:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 9, current_position == "NONE" ? "💤 No Position" : current_position == "LONG" ? "📈 LONG" : "📉 SHORT", text_color=color.new(color.white, 0), bgcolor=current_position == "LONG" ? color.new(color.lime, 20) : current_position == "SHORT" ? color.new(color.red, 20) : color.new(color.gray, 50), text_size=size.small)
+    
+    table.cell(info_table, 0, 10, "Entry Price:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 10, current_position != "NONE" and not na(entry_price) ? str.tostring(entry_price, "#.##") : "---", text_color=color.new(color.yellow, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 11, "RSI Period:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 11, str.tostring(rsi_period), text_color=color.new(color.yellow, 0), bgcolor=color.new(color.white, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 12, "RSI Conf:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 12, use_rsi_conf ? "Enabled" : "Disabled", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 13, "MACD Conf:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 13, use_macd_conf ? "Enabled" : "Disabled", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 14, "Pattern Conf:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 14, use_pattern_conf ? "Enabled" : "Disabled", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 15, "BB Conf:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 15, use_bb_conf ? "Enabled" : "Disabled", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 16, "Stoch Conf:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 16, use_stoch_conf ? "Enabled" : "Disabled", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 17, "TF1H Used:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 17, use_tf_higher1 ? "Yes" : "No", text_color=color.new(color.white, 0), bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    table.cell(info_table, 0, 18, "Sideway Status:", text_color=color.new(color.white, 0), bgcolor=color.new(color.gray, 70), text_size=size.small)
+    table.cell(info_table, 1, 18, is_sideway ? "⚠️ Sideway" : "📈/📉 Trending", text_color=color.new(color.white, 0), bgcolor=is_sideway ? color.new(color.yellow, 20) : color.new(color.black, 0), text_size=size.small)
