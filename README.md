@@ -3,7 +3,7 @@
 By 1.Supachai Sornprasert [https://linktr.ee/bosssupachai]
      2.Tawantong Wongrinyong [https://www.facebook.com/RISMZUN]
 
-# ✅ หลักการแกนกลาง
+# ✅ หลักการ
 ใช้ EMA50 และ EMA200 ใน Timeframe 15 นาที (TF15M)
 EMA50 ตัด EMA200 ขึ้น → สัญญาณซื้อ
 EMA50 ตัด EMA200 ลง → สัญญาณขาย
