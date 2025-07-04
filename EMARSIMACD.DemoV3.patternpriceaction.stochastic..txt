@@ -1,5 +1,5 @@
 // TradingView Pine Script
-//@version=5
+//@version=6
 indicator("💹 Multi-Indicator Trading System", shorttitle="Multi-Indicator System", overlay=true)
 
 // Input parameters with default values
