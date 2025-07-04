@@ -2,7 +2,7 @@
 //@version=5
 indicator("💹 Multi-Indicator Trading System", shorttitle="Multi-Indicator System", overlay=true)
 
-// Input parameters
+// Input parameters with default values
 ema50_length = input.int(50, title="EMA 50 Length", minval=1)
 ema200_length = input.int(200, title="EMA 200 Length", minval=1)
 show_signals = input.bool(true, title="Show Buy/Sell Signals")
